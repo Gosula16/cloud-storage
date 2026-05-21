@@ -10,6 +10,7 @@ import api from '../api';
 function Dashboard() {
     const [activePage, setActivePage] =
     useState('dashboard');
+    const [refreshKey, setRefreshKey] = useState(0);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -26,6 +27,10 @@ function Dashboard() {
         navigate('/');
     });
 };
+
+    const refreshDashboard = () => {
+        setRefreshKey((current) => current + 1);
+    };
 
     return (
 
@@ -105,11 +110,11 @@ function Dashboard() {
 
         <>
 
-            <StorageStats />
+            <StorageStats refreshKey={refreshKey} />
 
-            <UploadForm />
+            <UploadForm onUploadSuccess={refreshDashboard} />
 
-            <FileList />
+            <FileList refreshKey={refreshKey} onChange={refreshDashboard} />
 
         </>
     )
@@ -122,7 +127,7 @@ function Dashboard() {
 
             <h2>My Files</h2>
 
-            <FileList />
+            <FileList refreshKey={refreshKey} onChange={refreshDashboard} />
 
         </div>
     )

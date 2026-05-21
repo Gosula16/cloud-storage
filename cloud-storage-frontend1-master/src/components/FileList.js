@@ -5,23 +5,29 @@ import React, {
 
 import api, { getErrorMessage } from '../api';
 
-function FileList() {
+function FileList({ refreshKey = 0, onChange }) {
 
     const [files, setFiles] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
 
         fetchFiles();
 
-    }, []);
+    }, [refreshKey]);
 
     const fetchFiles = async () => {
 
         try {
+            setLoading(true);
             const res = await api.get('/api/files');
             setFiles(res.data.files || res.data || []);
+            setError('');
         } catch (error) {
-            alert(getErrorMessage(error, 'Could not load files'));
+            setError(getErrorMessage(error, 'Could not load files'));
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -116,6 +122,7 @@ localStorage.setItem(
 
         try {
             await api.delete(`/api/files/${encodeURIComponent(getFileKey(file))}`);
+            onChange?.();
             fetchFiles();
         } catch (error) {
             alert(getErrorMessage(error, "Delete failed"));
@@ -132,6 +139,24 @@ localStorage.setItem(
             <h2>
                 Recent Files
             </h2>
+
+            {error && (
+                <div className="inline-error">
+                    {error}
+                </div>
+            )}
+
+            {loading && (
+                <p className="muted-text">
+                    Loading files...
+                </p>
+            )}
+
+            {!loading && !error && files.length === 0 && (
+                <p className="muted-text">
+                    No files uploaded yet.
+                </p>
+            )}
 
             {files.map((file) => (
 

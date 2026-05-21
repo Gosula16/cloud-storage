@@ -4,25 +4,33 @@ import api, { getErrorMessage } from '../api';
 
 import { useDropzone } from 'react-dropzone';
 
-function UploadForm() {
+function UploadForm({ onUploadSuccess }) {
 
     const [file, setFile] = useState();
+    const [status, setStatus] = useState('');
+    const [error, setError] = useState('');
+    const [uploading, setUploading] = useState(false);
 
-    const { getRootProps, getInputProps } =
+    const { getRootProps, getInputProps, isDragActive, open } =
         useDropzone({
+            multiple: false,
+            noClick: true,
+            noKeyboard: true,
+            onDrop: (acceptedFiles) => {
+                const selectedFile = acceptedFiles[0];
 
-            onDrop: acceptedFiles => {
-
-                setFile(acceptedFiles[0]);
+                if (selectedFile) {
+                    setFile(selectedFile);
+                    setError('');
+                    setStatus(`${selectedFile.name} selected`);
+                }
             }
         });
 
     const uploadFile = async () => {
 
         if (!file) {
-
-            alert("Select file");
-
+            setError('Select a file first.');
             return;
         }
 
@@ -31,52 +39,76 @@ function UploadForm() {
         formData.append('file', file);
 
         try {
-            await api.post(
+            setUploading(true);
+            setError('');
+            setStatus('Uploading...');
 
-                '/api/files/upload',
+            await api.post('/api/files/upload', formData);
 
-                formData
-            );
-
-            alert("File Uploaded");
-
-            window.location.reload();
+            setStatus('File uploaded successfully.');
+            setFile(undefined);
+            onUploadSuccess?.();
         } catch (error) {
-            alert(getErrorMessage(error, "Upload failed"));
+            setStatus('');
+            setError(getErrorMessage(error, 'Upload failed'));
+        } finally {
+            setUploading(false);
         }
     };
 
     return (
 
-        <div className="upload-box">
+        <div
+            {...getRootProps({
+                className: `upload-box ${isDragActive ? 'upload-box-active' : ''}`
+            })}
+        >
 
-            <div {...getRootProps()}>
+            <input {...getInputProps()} />
 
-                <input {...getInputProps()} />
+            <h2>
+                {isDragActive ? 'Drop the file here' : 'Drag & Drop your file here'}
+            </h2>
 
-                <h2>
-                    Drag & Drop your file here
-                </h2>
+            <p>
+                or click to browse
+            </p>
 
-                <p>
-                    or click to browse
-                </p>
-
-            </div>
+            <button
+                className="theme-btn"
+                type="button"
+                onClick={open}
+                disabled={uploading}
+            >
+                Browse File
+            </button>
 
             {file && (
-                <p>
-                    Selected:
-                    {file.name}
+                <p className="selected-file">
+                    Selected: {file.name}
                 </p>
             )}
 
             <button
-    className="theme-btn"
-    onClick={uploadFile}
->
-    Upload File
-</button>
+                className="theme-btn upload-action"
+                type="button"
+                onClick={uploadFile}
+                disabled={uploading || !file}
+            >
+                {uploading ? 'Uploading...' : 'Upload File'}
+            </button>
+
+            {status && (
+                <p className="inline-success">
+                    {status}
+                </p>
+            )}
+
+            {error && (
+                <p className="inline-error">
+                    {error}
+                </p>
+            )}
 
         </div>
     );

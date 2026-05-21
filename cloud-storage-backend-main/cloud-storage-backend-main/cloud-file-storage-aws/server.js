@@ -42,10 +42,15 @@ const parseOrigins = (value) =>
         .filter(Boolean);
 
 const allowedOrigins = parseOrigins(process.env.CLIENT_ORIGIN);
+const allowVercelOrigins = process.env.ALLOW_VERCEL_ORIGINS !== 'false';
+const isAllowedOrigin = (origin) =>
+    allowedOrigins.length === 0 ||
+    allowedOrigins.includes(origin) ||
+    (allowVercelOrigins && /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin));
 
 app.use(cors({
     origin(origin, callback) {
-        if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        if (!origin || isAllowedOrigin(origin)) {
             return callback(null, true);
         }
 

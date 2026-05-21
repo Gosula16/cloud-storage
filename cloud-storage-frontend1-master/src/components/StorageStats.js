@@ -5,27 +5,40 @@ import React, {
 
 import api, { getErrorMessage } from '../api';
 
-function StorageStats() {
+function StorageStats({ refreshKey = 0 }) {
 
-    const [stats, setStats] = useState({});
+    const [stats, setStats] = useState({
+        totalFiles: 0,
+        totalSizeMB: 0
+    });
+    const [error, setError] = useState('');
 
     useEffect(() => {
 
         fetchStats();
 
-    }, []);
+    }, [refreshKey]);
 
     const fetchStats = async () => {
 
         try {
             const res = await api.get('/api/files/stats');
             setStats(res.data);
+            setError('');
         } catch (error) {
-            alert(getErrorMessage(error, 'Could not load storage stats'));
+            setError(getErrorMessage(error, 'Could not load storage stats'));
         }
     };
 
     return (
+
+        <>
+
+        {error && (
+            <div className="inline-error">
+                {error}
+            </div>
+        )}
 
         <div className="stats-grid">
 
@@ -66,6 +79,8 @@ function StorageStats() {
             </div>
 
         </div>
+
+        </>
     );
 }
 
