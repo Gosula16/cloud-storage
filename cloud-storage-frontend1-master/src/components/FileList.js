@@ -1,9 +1,45 @@
 import React, {
     useEffect,
+    useMemo,
     useState
 } from 'react';
 
 import api, { getErrorMessage } from '../api';
+
+const typeGroups = [
+    {
+        label: 'Images',
+        extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico']
+    },
+    {
+        label: 'Documents',
+        extensions: ['pdf', 'doc', 'docx', 'txt', 'rtf', 'md']
+    },
+    {
+        label: 'Spreadsheets',
+        extensions: ['xls', 'xlsx', 'csv']
+    },
+    {
+        label: 'Presentations',
+        extensions: ['ppt', 'pptx']
+    },
+    {
+        label: 'Videos',
+        extensions: ['mp4', 'mov', 'avi', 'mkv', 'webm']
+    },
+    {
+        label: 'Audio',
+        extensions: ['mp3', 'wav', 'aac', 'flac', 'm4a']
+    },
+    {
+        label: 'Archives',
+        extensions: ['zip', 'rar', '7z', 'tar', 'gz']
+    },
+    {
+        label: 'Code',
+        extensions: ['js', 'jsx', 'ts', 'tsx', 'html', 'css', 'json', 'py', 'java', 'c', 'cpp']
+    }
+];
 
 function FileList({ refreshKey = 0, onChange }) {
 
@@ -16,6 +52,32 @@ function FileList({ refreshKey = 0, onChange }) {
         fetchFiles();
 
     }, [refreshKey]);
+
+    const normalizedFiles = useMemo(() =>
+        files
+            .map((file) => normalizeFile(file))
+            .sort((a, b) => b.uploadedAtValue - a.uploadedAtValue),
+    [files]);
+
+    const groupedFiles = useMemo(() => {
+        const groups = normalizedFiles.reduce((acc, file) => {
+            const key = file.typeLabel;
+
+            if (!acc[key]) {
+                acc[key] = [];
+            }
+
+            acc[key].push(file);
+            return acc;
+        }, {});
+
+        return Object.entries(groups)
+            .map(([label, items]) => ({
+                label,
+                items
+            }))
+            .sort((a, b) => b.items[0].uploadedAtValue - a.items[0].uploadedAtValue);
+    }, [normalizedFiles]);
 
     const fetchFiles = async () => {
 
@@ -37,7 +99,7 @@ function FileList({ refreshKey = 0, onChange }) {
 
         const response = await api.get(
 
-            `/api/files/download/${encodeURIComponent(getFileKey(file))}`,
+            `/api/files/download/${encodeURIComponent(file.key)}`,
 
             {
                 responseType: 'blob'
@@ -52,11 +114,14 @@ function FileList({ refreshKey = 0, onChange }) {
 
         link.href = url;
 
-        link.setAttribute('download', getFileKey(file));
+        link.setAttribute('download', file.name);
 
         document.body.appendChild(link);
 
         link.click();
+
+        link.remove();
+        window.URL.revokeObjectURL(url);
 
     } catch (error) {
 
@@ -68,7 +133,7 @@ function FileList({ refreshKey = 0, onChange }) {
 
         try {
             const res = await api.get(
-                `/api/files/share/${encodeURIComponent(getFileKey(file))}`
+                `/api/files/share/${encodeURIComponent(file.key)}`
             );
 
             window.open(res.data.url, '_blank', 'noopener,noreferrer');
@@ -77,13 +142,13 @@ function FileList({ refreshKey = 0, onChange }) {
         }
     };
 
-    const shareFile = async (name) => {
+    const shareFile = async (file) => {
 
         try {
 
             const res = await api.get(
 
-                `/api/files/share/${encodeURIComponent(getFileKey(name))}`
+                `/api/files/share/${encodeURIComponent(file.key)}`
             );
 
             navigator.clipboard.writeText(
@@ -98,7 +163,7 @@ function FileList({ refreshKey = 0, onChange }) {
 
 existingLinks.push({
 
-    file: getFileKey(name),
+    file: file.name,
 
     url: res.data.url
 });
@@ -121,7 +186,7 @@ localStorage.setItem(
     const deleteFile = async (file) => {
 
         try {
-            await api.delete(`/api/files/${encodeURIComponent(getFileKey(file))}`);
+            await api.delete(`/api/files/${encodeURIComponent(file.key)}`);
             onChange?.();
             fetchFiles();
         } catch (error) {
@@ -129,16 +194,20 @@ localStorage.setItem(
         }
     };
 
-    const getFileKey = (file) =>
-        typeof file === 'string' ? file : file.key;
-
     return (
 
         <div className="files-section">
 
-            <h2>
-                Recent Files
-            </h2>
+            <div className="section-heading">
+                <div>
+                    <h2>
+                        Files by Type
+                    </h2>
+                    <p>
+                        Sorted by latest upload date with file details.
+                    </p>
+                </div>
+            </div>
 
             {error && (
                 <div className="inline-error">
@@ -152,62 +221,135 @@ localStorage.setItem(
                 </p>
             )}
 
-            {!loading && !error && files.length === 0 && (
+            {!loading && !error && normalizedFiles.length === 0 && (
                 <p className="muted-text">
                     No files uploaded yet.
                 </p>
             )}
 
-            {files.map((file) => (
-
+            {groupedFiles.map((group) => (
                 <div
-                    className="file-card"
-                    key={getFileKey(file)}
+                    className="file-group"
+                    key={group.label}
                 >
-
-                    <p>{getFileKey(file)}</p>
-
-                    <div className="file-actions">
-
-                        <button
-                            onClick={() =>
-                                downloadFile(file)
-                            }
-                        >
-                            Download
-                        </button>
-
-                        <button
-                            onClick={() =>
-                                previewFile(file)
-                            }
-                        >
-                            Preview
-                        </button>
-
-                        <button
-                            onClick={() =>
-                                shareFile(file)
-                            }
-                        >
-                            Share
-                        </button>
-
-                        <button
-                            onClick={() =>
-                                deleteFile(file)
-                            }
-                        >
-                            Delete
-                        </button>
-
+                    <div className="file-group-header">
+                        <h3>{group.label}</h3>
+                        <span>{group.items.length} file{group.items.length === 1 ? '' : 's'}</span>
                     </div>
 
+                    {group.items.map((file) => (
+
+                        <div
+                            className="file-card"
+                            key={file.key}
+                        >
+
+                            <div className="file-info">
+                                <p>{file.name}</p>
+                                <div className="file-meta">
+                                    <span>{file.typeLabel}</span>
+                                    <span>{file.formattedDate}</span>
+                                    <span>{file.formattedSize}</span>
+                                </div>
+                            </div>
+
+                            <div className="file-actions">
+
+                                <button
+                                    onClick={() =>
+                                        downloadFile(file)
+                                    }
+                                >
+                                    Download
+                                </button>
+
+                                <button
+                                    onClick={() =>
+                                        previewFile(file)
+                                    }
+                                >
+                                    Preview
+                                </button>
+
+                                <button
+                                    onClick={() =>
+                                        shareFile(file)
+                                    }
+                                >
+                                    Share
+                                </button>
+
+                                <button
+                                    onClick={() =>
+                                        deleteFile(file)
+                                    }
+                                >
+                                    Delete
+                                </button>
+
+                            </div>
+
+                        </div>
+                    ))}
                 </div>
             ))}
 
         </div>
     );
 }
+
+const normalizeFile = (file) => {
+    const key = typeof file === 'string' ? file : file.key;
+    const name = key.replace(/^\d+-/, '');
+    const extension = getExtension(key);
+    const uploadedAt = file.lastModified ? new Date(file.lastModified) : getDateFromKey(key);
+    const uploadedAtValue = uploadedAt?.getTime?.() || 0;
+
+    return {
+        key,
+        name,
+        extension,
+        typeLabel: getTypeLabel(extension),
+        uploadedAtValue,
+        formattedDate: uploadedAtValue
+            ? uploadedAt.toLocaleString()
+            : 'Upload date unavailable',
+        formattedSize: formatBytes(file.size || 0)
+    };
+};
+
+const getExtension = (key) => {
+    const cleanKey = key.split('?')[0];
+    const parts = cleanKey.split('.');
+    return parts.length > 1 ? parts.pop().toLowerCase() : '';
+};
+
+const getTypeLabel = (extension) => {
+    const group = typeGroups.find((item) =>
+        item.extensions.includes(extension)
+    );
+
+    return group?.label || 'Other Files';
+};
+
+const getDateFromKey = (key) => {
+    const timestamp = Number(key.split('-')[0]);
+    return Number.isFinite(timestamp) ? new Date(timestamp) : null;
+};
+
+const formatBytes = (bytes) => {
+    if (!bytes) {
+        return '0 B';
+    }
+
+    const units = ['B', 'KB', 'MB', 'GB'];
+    const index = Math.min(
+        Math.floor(Math.log(bytes) / Math.log(1024)),
+        units.length - 1
+    );
+    const value = bytes / Math.pow(1024, index);
+
+    return `${value.toFixed(value >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
+};
 
 export default FileList;
