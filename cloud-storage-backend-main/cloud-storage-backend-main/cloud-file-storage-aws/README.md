@@ -26,6 +26,38 @@ Required environment variables are listed in `.env.example`.
 
 Protected file routes require `Authorization: Bearer <token>`.
 
+## Render deployment
+
+This repository includes a root `render.yaml` blueprint for the backend service.
+
+1. Open Render and create a new Blueprint from the GitHub repo.
+2. Use `render.yaml` from the repository root.
+3. Fill the secret environment variables Render asks for:
+
+```env
+JWT_SECRET=<long-random-secret>
+AWS_ACCESS_KEY_ID=<aws-key>
+AWS_SECRET_ACCESS_KEY=<aws-secret>
+AWS_REGION=<bucket-region>
+AWS_BUCKET_NAME=<bucket-name>
+```
+
+4. After Render deploys, copy the backend URL, for example:
+
+```text
+https://cloud-storage-backend.onrender.com
+```
+
+5. In Vercel, set the frontend environment variable:
+
+```env
+REACT_APP_API_BASE_URL=https://cloud-storage-backend.onrender.com
+```
+
+6. Redeploy the frontend on Vercel.
+
+The Render blueprint mounts a persistent disk at `/var/lib/cloud-storage` so local user auth data survives restarts. For high-traffic production, replace this file store with a managed database.
+
 ## EC2 deployment
 
 1. Copy the backend folder to the EC2 instance.
