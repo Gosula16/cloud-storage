@@ -32,6 +32,13 @@ function Login() {
                 res.data.token
             );
 
+            if (res.data.user) {
+                localStorage.setItem(
+                    'user',
+                    JSON.stringify(res.data.user)
+                );
+            }
+
             navigate('/dashboard');
 
         } catch (error) {

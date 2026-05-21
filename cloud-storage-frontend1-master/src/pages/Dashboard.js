@@ -6,12 +6,20 @@ import StorageStats from '../components/StorageStats';
 import SharedLinks from '../components/SharedLinks';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import { FaMoon, FaSun } from 'react-icons/fa';
 
 function Dashboard() {
     const [activePage, setActivePage] =
     useState('dashboard');
     const [refreshKey, setRefreshKey] = useState(0);
+    const [theme, setTheme] = useState(
+        localStorage.getItem('theme') || 'dark'
+    );
     const navigate = useNavigate();
+    const user = JSON.parse(
+        localStorage.getItem('user') || '{}'
+    );
+    const displayName = user.username || 'there';
 
     useEffect(() => {
         if (!localStorage.getItem('token')) {
@@ -19,10 +27,16 @@ function Dashboard() {
         }
     }, [navigate]);
 
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+    }, [theme]);
+
     const logout = () => {
 
     api.post('/api/auth/logout').finally(() => {
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
 
         navigate('/');
     });
@@ -30,6 +44,12 @@ function Dashboard() {
 
     const refreshDashboard = () => {
         setRefreshKey((current) => current + 1);
+    };
+
+    const toggleTheme = () => {
+        setTheme((current) =>
+            current === 'dark' ? 'light' : 'dark'
+        );
     };
 
     return (
@@ -94,7 +114,7 @@ function Dashboard() {
 
                     <div>
                         <h1>
-                            Welcome Back
+                            Welcome Back, {displayName}
                         </h1>
 
                         <p>
@@ -102,6 +122,16 @@ function Dashboard() {
                             and storage
                         </p>
                     </div>
+
+                    <button
+                        className="theme-toggle"
+                        type="button"
+                        onClick={toggleTheme}
+                        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+                        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+                    >
+                        {theme === 'dark' ? <FaSun /> : <FaMoon />}
+                    </button>
 
                 </div>
 
