@@ -58,6 +58,46 @@ REACT_APP_API_BASE_URL=https://cloud-storage-backend.onrender.com
 
 The Render blueprint mounts a persistent disk at `/var/lib/cloud-storage` so local user auth data survives restarts. For high-traffic production, replace this file store with a managed database.
 
+## Fly.io deployment
+
+This backend also includes Fly deployment files:
+
+- `Dockerfile`
+- `.dockerignore`
+- `fly.toml`
+
+Install and log in to Fly first:
+
+```bash
+fly auth login
+```
+
+From this backend folder, create or deploy the app:
+
+```bash
+fly apps create cloud-storage-backend-krish
+fly secrets set JWT_SECRET=<long-random-secret>
+fly secrets set AWS_ACCESS_KEY_ID=<aws-key>
+fly secrets set AWS_SECRET_ACCESS_KEY=<aws-secret>
+fly secrets set AWS_REGION=<bucket-region>
+fly secrets set AWS_BUCKET_NAME=<bucket-name>
+fly deploy
+```
+
+After deployment, the backend URL will be:
+
+```text
+https://cloud-storage-backend-krish.fly.dev
+```
+
+Then update Vercel:
+
+```env
+REACT_APP_API_BASE_URL=https://cloud-storage-backend-krish.fly.dev
+```
+
+Note: without a Fly volume or managed database, backend user data stored in `DATA_DIR` is ephemeral and can disappear when the machine is rebuilt. AWS S3 files remain safe because uploads are stored in S3.
+
 ## EC2 deployment
 
 1. Copy the backend folder to the EC2 instance.
