@@ -1,3 +1,12 @@
+---
+title: Cloud Storage Backend
+emoji: 📁
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 7860
+---
+
 # Cloud Storage Backend
 
 Express API for authentication and AWS S3 file operations.
@@ -57,6 +66,47 @@ REACT_APP_API_BASE_URL=https://cloud-storage-backend.onrender.com
 6. Redeploy the frontend on Vercel.
 
 The Render blueprint mounts a persistent disk at `/var/lib/cloud-storage` so local user auth data survives restarts. For high-traffic production, replace this file store with a managed database.
+
+## Hugging Face Spaces deployment
+
+This backend can run as a Hugging Face Docker Space. Create a new Space with **Docker** as the SDK, then push this backend folder to the Space repository.
+
+Set these Space variables:
+
+```env
+NODE_ENV=production
+PORT=7860
+CLIENT_ORIGIN=https://cloud-storage-frontend1-master.vercel.app
+ALLOW_VERCEL_ORIGINS=true
+AWS_REGION=ap-south-2
+AWS_BUCKET_NAME=cloud-file-storage-projectkrish
+DATA_DIR=/data
+JWT_EXPIRES_IN=7d
+MAX_FILE_SIZE_BYTES=26214400
+SIGNED_URL_EXPIRES_SECONDS=3600
+```
+
+Set these Space secrets:
+
+```env
+JWT_SECRET=<strong-random-secret>
+AWS_ACCESS_KEY_ID=<aws-access-key>
+AWS_SECRET_ACCESS_KEY=<aws-secret-key>
+```
+
+The Space URL will look like:
+
+```text
+https://<huggingface-user>-<space-name>.hf.space
+```
+
+After the Space is running, update Vercel:
+
+```env
+REACT_APP_API_BASE_URL=https://<huggingface-user>-<space-name>.hf.space
+```
+
+Note: unless persistent Space storage is enabled, `/data` is reset when the Space is rebuilt or restarted. AWS S3 files remain safe, but registered users stored in `users.json` may be lost. For production auth, use a managed database.
 
 ## Fly.io deployment
 
